@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fractions — Représentations visuelles · PLAI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, 'Segoe UI', sans-serif;
+      background: #f8f7ff;
+      color: #1e1b4b;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: #1e1b4b;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 24px;
+      flex-shrink: 0;
+    }
+    header img {
+      height: 44px;
+      width: auto;
+      object-fit: contain;
+    }
+    .logo-fallback {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+    .logo-fallback .rose { color: #ec4899; }
+    header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+    }
+
+    /* ── BODY LAYOUT ── */
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── PANNEAU GAUCHE ── */
+    aside {
+      width: 260px;
+      min-width: 260px;
+      background: #fff;
+      border-right: 1px solid #e5e7eb;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    /* fraction input */
+    .fraction-input {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      width: fit-content;
+      margin: 0 auto;
+    }
+    .fraction-input input[type="number"] {
+      width: 64px;
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 4px 0;
+      color: #1e1b4b;
+      background: #f8f7ff;
+      outline: none;
+      transition: border-color .2s;
+      -moz-appearance: textfield;
+    }
+    .fraction-input input[type="number"]::-webkit-outer-spin-button,
+    .fraction-input input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .fraction-input input[type="number"]:focus { border-color: #ec4899; }
+    .fraction-bar {
+      width: 64px;
+      height: 3px;
+      background: #1e1b4b;
+      border-radius: 2px;
+    }
+
+    /* repr buttons */
+    .repr-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .repr-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 6px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      background: #f8f7ff;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #6b7280;
+      transition: border-color .2s, background .2s, color .2s;
+      line-height: 1.2;
+      text-align: center;
+    }
+    .repr-btn .repr-icon { font-size: 1.4rem; }
+    .repr-btn:hover { border-color: #ec4899; color: #ec4899; }
+    .repr-btn.active {
+      border-color: #ec4899;
+      background: #fdf2f8;
+      color: #be185d;
+    }
+
+    /* toggles */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: #374151;
+    }
+    .toggle-label { flex: 1; }
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #d1d5db;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .toggle input:checked + .toggle-track { background: #ec4899; }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+      pointer-events: none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+    /* ── MAIN ── */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px 24px;
+      gap: 20px;
+      overflow: auto;
+    }
+    #svg-container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 16px rgba(30,27,75,.08);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #svg-container svg {
+      display: block;
+      width: min(400px, 85vw);
+      height: min(400px, 85vw);
+    }
+
+    /* ── BANDE SCI-NOTE ── */
+    .sci-note {
+      background: #fdf4ff;
+      border-top: 1px solid #e9d5ff;
+      padding: 10px 24px;
+      font-size: 0.75rem;
+      color: #6b21a8;
+      line-height: 1.6;
+      flex-shrink: 0;
+    }
+    .sci-note strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <img
+    src="PLAI.jpg"
+    alt="Logo PLAI"
+    onerror="this.style.display='none'; document.getElementById('logo-txt').style.display='inline';"
+  />
+  <span class="logo-fallback" id="logo-txt" style="display:none;">
+    PLA<span class="rose">I</span>
+  </span>
+  <h1>Fractions — Représentations visuelles</h1>
+</header>
+
+<div class="app-body">
+
+  <!-- PANNEAU GAUCHE -->
+  <aside>
+
+    <!-- 1. Fraction -->
+    <div>
+      <div class="section-title">Fraction</div>
+      <div class="fraction-input">
+        <input type="number" id="numerateur" value="3" min="0" max="24" />
+        <div class="fraction-bar"></div>
+        <input type="number" id="denominateur" value="4" min="1" max="24" />
+      </div>
+    </div>
+
+    <!-- 2. Représentation -->
+    <div>
+      <div class="section-title">Représentation</div>
+      <div class="repr-grid">
+        <button class="repr-btn active" data-repr="disque">
+          <span class="repr-icon">🔵</span>Disque
+        </button>
+        <button class="repr-btn" data-repr="barre">
+          <span class="repr-icon">📊</span>Barre
+        </button>
+        <button class="repr-btn" data-repr="droite">
+          <span class="repr-icon">📏</span>Droite numérique
+        </button>
+        <button class="repr-btn" data-repr="collection">
+          <span class="repr-icon">⚫</span>Collection
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. Options -->
+    <div>
+      <div class="section-title">Options</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+
+        <div class="toggle-row">
+          <span class="toggle-label">Valeur décimale</span>
+          <label class="toggle">
+            <input type="checkbox" id="opt-decimal" />
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span class="toggle-label">Afficher la fraction</span>
+          <label class="toggle">
+            <input type="checkbox" id="opt-fraction" checked />
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span class="toggle-label">Quadrillage / bordures</span>
+          <label class="toggle">
+            <input type="checkbox" id="opt-grid" checked />
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ZONE PRINCIPALE -->
+  <main>
+    <div id="svg-container">
+      <svg id="viz" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </main>
+
+</div>
+
+<!-- BANDE SCI-NOTE -->
+<div class="sci-note">
+  <strong>Nguala, Guillon &amp; Di Beta (2025)</strong> — chaque changement de représentation
+  met en évidence une partie différente des caractéristiques de la fraction ; plusieurs
+  conversions sont nécessaires pour une connaissance totale.&nbsp;•&nbsp;
+  <strong>Fanet (2021)</strong> — ritualiser plusieurs représentations (bande, disque, droite,
+  ensemble) développe la capacité à identifier et produire différentes formes d'une même fraction.
+  <em style="margin-left:6px;opacity:.7;">[Sources vérifiées corpus RISS — hal-05166265 / dumas-03695946]</em>
+</div>
+
+<script>
+  /* ─── STATE ─── */
+  const state = {
+    n: 3,
+    d: 4,
+    repr: 'disque',
+    decimal: false,
+    showFraction: true,
+    grid: true,
+  };
+
+  /* ─── COULEURS ─── */
+  const C_FILL   = '#ec4899'; // rose foncé — parts actives
+  const C_EMPTY  = '#fce7f3'; // rose pâle  — parts vides
+  const C_STROKE = '#ffffff';
+  const C_OUTER  = '#1f2937';
+  const C_TEXT   = '#1e1b4b';
+  const C_POINT  = '#ec4899';
+  const C_LINE   = '#374151';
+
+  /* ─── HELPERS SVG ─── */
+  function el(tag, attrs = {}, children = []) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const e = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    for (const c of children) {
+      if (typeof c === 'string') e.textContent = c;
+      else e.appendChild(c);
+    }
+    return e;
+  }
+
+  function polarToXY(cx, cy, r, angleDeg) {
+    const a = (angleDeg - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  }
+
+  function labelFraction(num, den) {
+    if (num === 0) return '0';
+    if (num === den) return '1';
+    return `${num}/${den}`;
+  }
+
+  function svgText(x, y, txt, opts = {}) {
+    return el('text', {
+      x, y,
+      'text-anchor': opts.anchor || 'middle',
+      'dominant-baseline': opts.base || 'auto',
+      'font-size': opts.size || '13',
+      'font-weight': opts.bold ? '700' : '400',
+      fill: opts.fill || C_TEXT,
+      'font-family': "system-ui, 'Segoe UI', sans-serif",
+      ...opts.extra,
+    }, [txt]);
+  }
+
+  /* ─── RENDER DISQUE ─── */
+  function renderDisque(svg, n, d, showFraction, showGrid, showDecimal) {
+    const cx = 200, cy = 200, R = 160;
+
+    // cercle de fond
+    svg.appendChild(el('circle', {
+      cx, cy, r: R,
+      fill: C_EMPTY,
+      stroke: showGrid ? C_OUTER : 'none',
+      'stroke-width': '2',
+    }));
+
+    if (d === 1) {
+      // cas particulier : cercle plein ou vide
+      svg.appendChild(el('circle', { cx, cy, r: R, fill: n >= 1 ? C_FILL : C_EMPTY }));
+    } else {
+      const angleSlice = 360 / d;
+      for (let i = 0; i < d; i++) {
+        const startDeg = i * angleSlice;
+        const endDeg   = (i + 1) * angleSlice;
+        const [x1, y1] = polarToXY(cx, cy, R, startDeg);
+        const [x2, y2] = polarToXY(cx, cy, R, endDeg);
+        const large = angleSlice > 180 ? 1 : 0;
+        const fill  = i < n ? C_FILL : C_EMPTY;
+        const pathD = `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`;
+        svg.appendChild(el('path', {
+          d: pathD,
+          fill,
+          stroke: showGrid ? C_STROKE : 'none',
+          'stroke-width': '2',
+        }));
+      }
+    }
+
+    // cercle extérieur (contour propre)
+    svg.appendChild(el('circle', {
+      cx, cy, r: R,
+      fill: 'none',
+      stroke: C_OUTER,
+      'stroke-width': '2.5',
+    }));
+
+    // label central
+    if (showFraction || showDecimal) {
+      const lines = [];
+      if (showFraction) lines.push(labelFraction(n, d));
+      if (showDecimal)  lines.push(d > 0 ? (n / d).toFixed(3).replace(/0+$/, '').replace(/\.$/, '') : '—');
+      const yStart = 200 - (lines.length - 1) * 14;
+      lines.forEach((txt, idx) => {
+        svg.appendChild(svgText(cx, yStart + idx * 28, txt, {
+          size: '28', bold: true, fill: '#fff',
+          extra: {
+            'stroke': '#1e1b4b',
+            'stroke-width': '3',
+            'paint-order': 'stroke',
+          }
+        }));
+      });
+    }
+  }
+
+  /* ─── RENDER BARRE ─── */
+  function renderBarre(svg, n, d, showFraction, showGrid, showDecimal) {
+    const barX = 20, barY = 150, barW = 360, barH = 100;
+    const colW = barW / d;
+
+    // colonnes
+    for (let i = 0; i < d; i++) {
+      const fill = i < n ? C_FILL : C_EMPTY;
+      svg.appendChild(el('rect', {
+        x: barX + i * colW, y: barY,
+        width: colW, height: barH,
+        fill,
+        stroke: showGrid ? C_STROKE : 'none',
+        'stroke-width': '2',
+      }));
+    }
+
+    // contour global
+    if (showGrid) {
+      svg.appendChild(el('rect', {
+        x: barX, y: barY, width: barW, height: barH,
+        fill: 'none',
+        stroke: C_OUTER,
+        'stroke-width': '2.5',
+        rx: '4',
+      }));
+    }
+
+    // labels sous séparations
+    for (let i = 0; i <= d; i++) {
+      const x = barX + i * colW;
+      const lbl = i === 0 ? '0' : i === d ? '1' : `${i}/${d}`;
+      svg.appendChild(svgText(x, barY + barH + 22, lbl, { size: '11', fill: '#6b7280' }));
+    }
+
+    // label fraction / décimal
+    if (showFraction || showDecimal) {
+      const lines = [];
+      if (showFraction) lines.push(labelFraction(n, d));
+      if (showDecimal)  lines.push(d > 0 ? (n / d).toFixed(3).replace(/0+$/, '').replace(/\.$/, '') : '—');
+      const yStart = barY - 38 - (lines.length - 1) * 20;
+      lines.forEach((txt, idx) => {
+        svg.appendChild(svgText(200, yStart + idx * 24, txt, {
+          size: '26', bold: true,
+        }));
+      });
+    }
+  }
+
+  /* ─── RENDER DROITE NUMÉRIQUE ─── */
+  function renderDroite(svg, n, d, showFraction, showGrid, showDecimal) {
+    const lineY = 230;
+    const x0 = 40, x1 = 360;
+    const tickH = 10;
+    const lineLen = x1 - x0;
+
+    // ligne principale avec flèche
+    const arrowId = 'arrow-plai';
+    const defs = el('defs');
+    const marker = el('marker', {
+      id: arrowId, markerWidth: '10', markerHeight: '7',
+      refX: '10', refY: '3.5', orient: 'auto',
+    });
+    marker.appendChild(el('polygon', {
+      points: '0 0, 10 3.5, 0 7',
+      fill: C_LINE,
+    }));
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    svg.appendChild(el('line', {
+      x1: x0, y1: lineY, x2: x1 + 18, y2: lineY,
+      stroke: C_LINE, 'stroke-width': '2.5',
+      'marker-end': `url(#${arrowId})`,
+    }));
+
+    // graduation et labels
+    for (let i = 0; i <= d; i++) {
+      const x = x0 + (i / d) * lineLen;
+      const lbl = i === 0 ? '0' : i === d ? '1' : `${i}/${d}`;
+      // tick
+      svg.appendChild(el('line', {
+        x1: x, y1: lineY - tickH, x2: x, y2: lineY + tickH,
+        stroke: C_LINE, 'stroke-width': '1.5',
+      }));
+      // label
+      svg.appendChild(svgText(x, lineY + tickH + 18, lbl, { size: '11', fill: '#6b7280' }));
+    }
+
+    // point à n/d
+    const px = x0 + (n / d) * lineLen;
+
+    // ligne pointillée vers label haut
+    const labelY = lineY - 70;
+    svg.appendChild(el('line', {
+      x1: px, y1: lineY - 12, x2: px, y2: labelY + 18,
+      stroke: C_POINT, 'stroke-width': '1.5',
+      'stroke-dasharray': '5,4',
+    }));
+
+    // label n/d en haut
+    if (showFraction || showDecimal) {
+      const lines = [];
+      if (showFraction) lines.push(labelFraction(n, d));
+      if (showDecimal)  lines.push(d > 0 ? (n / d).toFixed(3).replace(/0+$/, '').replace(/\.$/, '') : '—');
+      const lyStart = labelY - (lines.length - 1) * 16;
+      lines.forEach((txt, idx) => {
+        svg.appendChild(svgText(px, lyStart + idx * 22, txt, {
+          size: '20', bold: true, fill: C_POINT,
+        }));
+      });
+    }
+
+    // point rose
+    svg.appendChild(el('circle', {
+      cx: px, cy: lineY, r: '10',
+      fill: C_POINT,
+      stroke: '#fff', 'stroke-width': '2.5',
+    }));
+  }
+
+  /* ─── RENDER COLLECTION ─── */
+  function renderCollection(svg, n, d, showFraction, showGrid, showDecimal) {
+    const cols  = Math.min(d, 5);
+    const rows  = Math.ceil(d / cols);
+    const r     = Math.min(32, Math.floor(Math.min(320 / cols, 200 / rows) / 2) - 4);
+    const hGap  = r * 2 + 12;
+    const vGap  = r * 2 + 12;
+    const totalW = cols * hGap - 12;
+    const totalH = rows * vGap - 12;
+    const startX = 200 - totalW / 2 + r;
+    const startY = 200 - totalH / 2 + r;
+
+    for (let i = 0; i < d; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx  = startX + col * hGap;
+      const cy  = startY + row * vGap;
+      const active = i < n;
+      svg.appendChild(el('circle', {
+        cx, cy, r,
+        fill:   active ? C_FILL : C_EMPTY,
+        stroke: showGrid ? (active ? '#be185d' : '#f9a8d4') : 'none',
+        'stroke-width': '2',
+      }));
+    }
+
+    // label
+    if (showFraction || showDecimal) {
+      const lines = [];
+      if (showFraction) lines.push(labelFraction(n, d));
+      if (showDecimal)  lines.push(d > 0 ? (n / d).toFixed(3).replace(/0+$/, '').replace(/\.$/, '') : '—');
+      const yBase = startY + totalH + r + 32;
+      lines.forEach((txt, idx) => {
+        svg.appendChild(svgText(200, yBase + idx * 24, txt, {
+          size: '22', bold: true,
+        }));
+      });
+    }
+  }
+
+  /* ─── RENDER PRINCIPAL ─── */
+  function render() {
+    const n = state.n;
+    const d = state.d;
+    const svg = document.getElementById('viz');
+    svg.innerHTML = '';
+
+    // fond blanc
+    svg.appendChild(el('rect', { x: 0, y: 0, width: 400, height: 400, fill: '#fff', rx: '12' }));
+
+    switch (state.repr) {
+      case 'disque':
+        renderDisque(svg, n, d, state.showFraction, state.grid, state.decimal);
+        break;
+      case 'barre':
+        renderBarre(svg, n, d, state.showFraction, state.grid, state.decimal);
+        break;
+      case 'droite':
+        renderDroite(svg, n, d, state.showFraction, state.grid, state.decimal);
+        break;
+      case 'collection':
+        renderCollection(svg, n, d, state.showFraction, state.grid, state.decimal);
+        break;
+    }
+  }
+
+  /* ─── BINDINGS ─── */
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  // numérateur
+  document.getElementById('numerateur').addEventListener('input', function () {
+    let v = parseInt(this.value);
+    if (isNaN(v)) return;
+    v = clamp(v, 0, 24);
+    // n ne peut pas dépasser d
+    if (v > state.d) v = state.d;
+    state.n = v;
+    this.value = v;
+    render();
+  });
+
+  // dénominateur
+  document.getElementById('denominateur').addEventListener('input', function () {
+    let v = parseInt(this.value);
+    if (isNaN(v)) return;
+    v = clamp(v, 1, 24);
+    state.d = v;
+    this.value = v;
+    // recadrer n si nécessaire
+    if (state.n > state.d) {
+      state.n = state.d;
+      document.getElementById('numerateur').value = state.d;
+    }
+    render();
+  });
+
+  // boutons représentation
+  document.querySelectorAll('.repr-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.repr-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      state.repr = this.dataset.repr;
+      render();
+    });
+  });
+
+  // toggles
+  document.getElementById('opt-decimal').addEventListener('change', function () {
+    state.decimal = this.checked;
+    render();
+  });
+  document.getElementById('opt-fraction').addEventListener('change', function () {
+    state.showFraction = this.checked;
+    render();
+  });
+  document.getElementById('opt-grid').addEventListener('change', function () {
+    state.grid = this.checked;
+    render();
+  });
+
+  // init
+  render();
+</script>
+</body>
+</html>
