@@ -217,9 +217,18 @@
                       <button onclick="validateLogin()">Se connecter</button>
                       <button onclick="closePasswordModal()">Annuler</button>
                   </div>
-                  <div style="text-align:center;margin-top:8px">
+                  <div style="text-align:center;margin-top:8px;display:flex;flex-direction:column;gap:4px">
+                    <button style="font-size:12px;background:none;border:none;color:#6b7280;cursor:pointer;text-decoration:underline" onclick="showSignupSection()">Pas encore de compte ? Créer un compte</button>
                     <button style="font-size:12px;background:none;border:none;color:#6b7280;cursor:pointer;text-decoration:underline" onclick="showResetSection()">Mot de passe oublié ?</button>
                   </div>
+                </div>
+                <div id="signup-form-section" style="display:none">
+                  <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Crée ton compte enseignant PLAI. Il te servira pour toutes les apps PLAI qui utilisent la même connexion.</p>
+                  <input type="email" id="signup-email" placeholder="Email professionnel (ex. prenom.nom@ecole.be)" style="display:block;width:100%;margin-bottom:8px;padding:6px;">
+                  <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères minimum)" style="display:block;width:100%;margin-bottom:8px;padding:6px;" onkeydown="if(event.key==='Enter')doSignup()">
+                  <div id="signup-msg" style="font-size:13px;min-height:16px;margin-bottom:6px;"></div>
+                  <button onclick="doSignup()">Créer le compte</button>
+                  <button onclick="hideSignupSection()" style="margin-left:6px">Retour</button>
                 </div>
                 <div id="reset-form-section" style="display:none">
                   <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Entre ton email pour recevoir un lien de réinitialisation.</p>
@@ -308,6 +317,34 @@
         function hideResetSection(){
             document.getElementById('reset-form-section').style.display='none';
             document.getElementById('login-form-section').style.display='block';
+        }
+        function showSignupSection(){
+            document.getElementById('login-form-section').style.display='none';
+            document.getElementById('signup-form-section').style.display='block';
+            document.getElementById('signup-email').value=document.getElementById('login-email').value;
+        }
+        function hideSignupSection(){
+            document.getElementById('signup-form-section').style.display='none';
+            document.getElementById('login-form-section').style.display='block';
+        }
+        async function doSignup(){
+            const email=document.getElementById('signup-email').value.trim();
+            const pwd=document.getElementById('signup-password').value;
+            const msg=document.getElementById('signup-msg'); msg.style.color='#e53e3e';
+            if(!email||!pwd){ msg.textContent='Email et mot de passe requis.'; return; }
+            if(pwd.length<6){ msg.textContent='Mot de passe : 6 caractères minimum.'; return; }
+            const {data,error}=await _sb.auth.signUp({email,password:pwd,options:{emailRedirectTo:window.location.href}});
+            if(error){ msg.textContent=error.message; return; }
+            if(data.session){
+                document.getElementById('signup-form-section').style.display='none';
+                document.getElementById('login-form-section').style.display='block';
+                closePasswordModal();
+                document.getElementById('student-panel').classList.add('hidden');
+                document.getElementById('teacher-panel').classList.remove('hidden');
+            } else {
+                msg.style.color='#059669';
+                msg.textContent='Compte créé. Vérifie ta boîte mail pour confirmer, puis connecte-toi.';
+            }
         }
         async function sendReset(){
             const email=document.getElementById('reset-email').value.trim();
